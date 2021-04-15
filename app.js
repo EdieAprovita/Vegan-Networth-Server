@@ -8,6 +8,7 @@ const logger = require('morgan')
 const path = require('path')
 const cors = require('cors')
 const colors = require('colors')
+const { notFound, errorHandler } = require('./middlewares/errorMiddleware')
 
 mongoose
 	.connect(process.env.DB, {
@@ -52,6 +53,9 @@ app.use('/api/posts', post)
 
 const profile = require('./routes/profile-routes')
 app.use('/api/profile', profile)
+
+app.use(notFound)
+app.use(errorHandler)
 
 // Uncomment this line for production
 // app.get('/*', (req, res) => res.sendFile(__dirname + '/public/index.html'));
