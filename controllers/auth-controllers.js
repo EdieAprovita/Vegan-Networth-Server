@@ -1,61 +1,58 @@
 const User = require('../models/User')
-const generateToken = require('../utils/generateToken')
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
+const config = require('config')
 const asyncHandler = require('express-async-handler')
-const normalizeUrl = require('normalize-url')
-const gravatar = require('gravatar')
 
-exports.registerUser = asyncHandler(async (req, res) => {
-	const { name, email, password } = req.body
+// @route    GET api/auth
+// @desc     Get user by token
+// @access   Private
 
-	const userExist = await User.findOne({ email })
-
-	if (userExist) {
-		res.status(400).json({ message: 'User already exists!!' })
-	}
-
-	const avatar = normalizeUrl(
-		gravatar.url(email, {
-			s: '200',
-			r: 'pg',
-			d: 'mm',
-		}),
-		{ forceHttps: true }
-	)
-
-	const user = await User.create({
-		name,
-		email,
-		password,
-		avatar,
-	})
-
-	if (user) {
-		res.status(201).json({
-			_id: user._id,
-			name: user.name,
-			email: user.email,
-			token: generateToken(user._id),
-		})
-	} else {
-		res.status(400)
-		throw new Error({ message: `${Error}`.red })
+exports.getUserToken = asyncHandler(async (req, res) => {
+	try {
+		const user = await User.findById(req.user.id).select('-password')
+		res.json(user)
+	} catch (error) {
+		res.status(400).json({ message: `${error}`.red.bold })
 	}
 })
+
+// @route    POST api/auth
+// @desc     Authenticate user & get token
+// @access   Public
 
 exports.authUser = asyncHandler(async (req, res) => {
 	const { email, password } = req.body
 
-	const user = await User.findOne({ email })
+	try {
+		let user = await User.findOne({ email })
 
-	if (user && (await user.matchPassword(password))) {
-		res.status(200).json({
-			_id: user._id,
-			name: user.name,
-			email: user.email,
-			token: generateToken(user._id),
-		})
-	} else {
-		res.status(401)
-		throw new Error({ message: `${Error}`.red })
+		if (!user) {
+			return res.status(400).json({ errors: [{ msg: 'Invalid Credentials' }] })
+		}
+
+		const isMatch = await bcrypt.compare(password, user.password)
+
+		if (!isMatch) {
+			return res.status(400).json({ errors: [{ msg: 'Invalid Credentials' }] })
+		}
+
+		const payload = {
+			user: {
+				id: user.id,
+			},
+		}
+
+		jwt.sign(
+			payload,
+			config.get('jwtSecret'),
+			{ expiresIn: '5 days' },
+			(err, token) => {
+				if (err) throw err
+				res.json({ token })
+			}
+		)
+	} catch (error) {
+		res.status(400).json({ message: `${error}`.red.bold })
 	}
 })

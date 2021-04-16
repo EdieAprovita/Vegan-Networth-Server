@@ -14,17 +14,17 @@ const {
 	getGithubProfile,
 } = require('../controllers/profile-controllers')
 
-const { protect } = require('../middlewares/authMiddleware')
+const auth = require('../middlewares/authMiddleware')
 
-router.get('/me', protect, getProfile)
-router.get('/allProfiles', getAllProfiles)
-router.get('/user/:user_id', protect, getProfileById)
-router.get('/github/:username', protect, getGithubProfile)
-router.post('/', protect, createUpdateProfile)
-router.put('/experience', protect, addExperience)
-router.put('/education', protect, AddEducation)
-router.delete('/', protect, deleteProfileInfo)
-router.delete('/experience/:exp_id', protect, deleteExperience)
-router.delete('/education/:edu_id', protect, deleteEducation)
+router.get('/me', auth, getProfile)
+router.get('/', getAllProfiles)
+router.get('/user/:user_id', auth, getProfileById)
+router.get('/github/:username', auth, getGithubProfile)
+router.post('/', auth, createUpdateProfile)
+router.put('/experience', auth, addExperience)
+router.put('/education', auth, AddEducation)
+router.delete('/', auth, deleteProfileInfo)
+router.delete('/experience/:exp_id', auth, deleteExperience)
+router.delete('/education/:edu_id', auth, deleteEducation)
 
 module.exports = router

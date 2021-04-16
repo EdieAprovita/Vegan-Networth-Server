@@ -4,13 +4,13 @@ const asyncHandler = require('express-async-handler')
 
 exports.createPost = asyncHandler(async (req, res) => {
 	try {
-		const user = await User.findById(req.user._id)
+		const user = await User.findById(req.user.id)
 
 		const newPost = new Post({
 			text: req.body.text,
 			name: user.name,
 			avatar: user.avatar,
-			user: req.user._id,
+			user: req.user.id,
 		})
 
 		const post = await newPost.save()
@@ -31,7 +31,7 @@ exports.getAllPost = asyncHandler(async (req, res) => {
 
 exports.getPostById = asyncHandler(async (req, res) => {
 	try {
-		const post = await Post.findById(req.params._id)
+		const post = await Post.findById(req.params.id)
 
 		if (!post) {
 			return res.status(404).json({ message: 'Post not found' })
@@ -45,13 +45,13 @@ exports.getPostById = asyncHandler(async (req, res) => {
 
 exports.deletePost = asyncHandler(async (req, res) => {
 	try {
-		const post = await Post.findById(req.params._id)
+		const post = await Post.findById(req.params.id)
 
 		if (!post) {
 			return res.status(404).json({ message: 'Post not found' })
 		}
 
-		if (post.user.toString() !== req.user._id) {
+		if (post.user.toString() !== req.user.id) {
 			return res.status(401).json({ message: 'User not authorized' })
 		}
 
@@ -65,13 +65,13 @@ exports.deletePost = asyncHandler(async (req, res) => {
 
 exports.likePost = asyncHandler(async (req, res) => {
 	try {
-		const post = await Post.findById(req.params._id)
+		const post = await Post.findById(req.params.id)
 
-		if (post.likes.some(like => like.user.toString() === req.user._id)) {
+		if (post.likes.some(like => like.user.toString() === req.user.id)) {
 			return res.status(400).json({ message: 'Post already liked' })
 		}
 
-		post.likes.unshift({ user: req.user._id })
+		post.likes.unshift({ user: req.user.id })
 
 		await post.save()
 
@@ -83,13 +83,13 @@ exports.likePost = asyncHandler(async (req, res) => {
 
 exports.unlikePost = asyncHandler(async (req, res) => {
 	try {
-		const post = await Post.findById(req.params._id)
+		const post = await Post.findById(req.params.id)
 
-		if (!post.likes.some(like => like.user.toString() === req.user._id)) {
+		if (!post.likes.some(like => like.user.toString() === req.user.id)) {
 			return res.status(400).json({ message: 'Post has not yet been liked' })
 		}
 
-		post.likes = post.likes.filter(({ user }) => user.toString() !== req.user._id)
+		post.likes = post.likes.filter(({ user }) => user.toString() !== req.user.id)
 
 		await post.save()
 
@@ -101,14 +101,14 @@ exports.unlikePost = asyncHandler(async (req, res) => {
 
 exports.commentPost = asyncHandler(async (req, res) => {
 	try {
-		const user = await User.findById(req.user._id)
-		const post = await Post.findById(req.params._id)
+		const user = await User.findById(req.user.id)
+		const post = await Post.findById(req.params.id)
 
 		const newComment = {
 			text: req.body.text,
 			name: user.name,
 			avatar: user.avatar,
-			user: req.user._id,
+			user: req.user.id,
 		}
 
 		post.comments.unshift(newComment)
@@ -123,21 +123,19 @@ exports.commentPost = asyncHandler(async (req, res) => {
 
 exports.deleteComment = asyncHandler(async (req, res) => {
 	try {
-		const post = await Post.findById(req.params._id)
+		const post = await Post.findById(req.params.id)
 
-		const comment = post.comments.find(
-			comment => comment._id === req.params.comment_id
-		)
+		const comment = post.comments.find(comment => comment.id === req.params.commentid)
 
 		if (!comment) {
 			return res.status(404).json({ message: 'Comment does not exist' })
 		}
 
-		if (comment.user.toString() !== req.user._id) {
+		if (comment.user.toString() !== req.user.id) {
 			return res.status(401).json({ message: 'User not authorized' })
 		}
 
-		post.comments = post.comments.filter(({ _id }) => _id !== req.params.comments_id)
+		post.comments = post.comments.filter(({ id }) => id !== req.params.commentsid)
 
 		await post.save()
 

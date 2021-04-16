@@ -12,15 +12,15 @@ const {
 	deleteComment,
 } = require('../controllers/posts-controllers')
 
-const { protect } = require('../middlewares/authMiddleware')
+const auth = require('../middlewares/authMiddleware')
 
-router.get('/allPosts', protect, getAllPost)
-router.get('/:id', protect, getPostById)
-router.post('/createPost', protect, createPost)
-router.post('/comment/:id', protect, commentPost)
-router.put('/like/:id', protect, likePost)
-router.put('/unlike/:id', protect, unlikePost)
-router.delete('/:id', protect, deletePost)
-router.delete('/comment/:id/:comment_id', protect, deleteComment)
+router.get('/', auth, getAllPost)
+router.get('/:id', auth, getPostById)
+router.post('/', auth, createPost)
+router.post('/comment/:id', auth, commentPost)
+router.put('/like/:id', auth, likePost)
+router.put('/unlike/:id', auth, unlikePost)
+router.delete('/:id', auth, deletePost)
+router.delete('/comment/:id/:comment_id', auth, deleteComment)
 
 module.exports = router

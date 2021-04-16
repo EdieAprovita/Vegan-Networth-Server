@@ -8,7 +8,6 @@ const logger = require('morgan')
 const path = require('path')
 const cors = require('cors')
 const colors = require('colors')
-const { notFound, errorHandler } = require('./middlewares/errorMiddleware')
 
 mongoose
 	.connect(process.env.DB, {
@@ -46,16 +45,16 @@ const index = require('./routes/index')
 app.use('/', index)
 
 const auth = require('./routes/auth-routes')
-app.use('/api/users', auth)
+app.use('/api/auth', auth)
+
+const user = require('./routes/user-routes')
+app.use('/api/user', user)
 
 const post = require('./routes/post-routes')
 app.use('/api/posts', post)
 
 const profile = require('./routes/profile-routes')
 app.use('/api/profile', profile)
-
-app.use(notFound)
-app.use(errorHandler)
 
 // Uncomment this line for production
 // app.get('/*', (req, res) => res.sendFile(__dirname + '/public/index.html'));
