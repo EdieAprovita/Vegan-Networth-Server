@@ -8,7 +8,7 @@ const {
 	getProfileById,
 	deleteProfileInfo,
 	addExperience,
-	AddEducation,
+	addEducation,
 	deleteExperience,
 	deleteEducation,
 	getGithubProfile,
@@ -22,7 +22,7 @@ router.get('/user/:user_id', auth, getProfileById)
 router.get('/github/:username', auth, getGithubProfile)
 router.post('/', auth, createUpdateProfile)
 router.put('/experience', auth, addExperience)
-router.put('/education', auth, AddEducation)
+router.put('/education', auth, addEducation)
 router.delete('/', auth, deleteProfileInfo)
 router.delete('/experience/:exp_id', auth, deleteExperience)
 router.delete('/education/:edu_id', auth, deleteEducation)

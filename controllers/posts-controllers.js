@@ -1,74 +1,113 @@
 const Post = require('../models/Post')
 const User = require('../models/User')
+const checkObjectId = require('../middlewares/checkObjectId')
 const asyncHandler = require('express-async-handler')
+const { check, validationResult } = require('express-validator')
 
-exports.createPost = asyncHandler(async (req, res) => {
-	try {
-		const user = await User.findById(req.user.id)
+// @route    POST api/posts
+// @desc     Create a post
+// @access   Private
 
-		const newPost = new Post({
-			text: req.body.text,
-			name: user.name,
-			avatar: user.avatar,
-			user: req.user.id,
-		})
+exports.createPost = asyncHandler(
+	check('text', 'Text is required').notEmpty(),
+	async (req, res) => {
+		const errors = validationResult(req)
+		if (errors.notEmpty()) {
+			return res.status(400).json({ errors: errors.array().red.bold })
+		}
 
-		const post = await newPost.save()
-		res.status(200).json(post)
-	} catch (error) {
-		res.status(400).json({ message: `${error}`.red })
+		try {
+			const user = await User.findById(req.user.id).select('-password')
+
+			const newPost = new Post({
+				text: req.body.text,
+				name: user.name,
+				avatar: user.avatar,
+				user: req.user.id,
+			})
+
+			const post = await newPost.save()
+
+			res.json(post)
+		} catch (err) {
+			console.error(err.message)
+			res.status(500).send('Server Error'.red.bold)
+		}
 	}
-})
+)
+
+// @route    GET api/posts
+// @desc     Get all posts
+// @access   Private
 
 exports.getAllPost = asyncHandler(async (req, res) => {
 	try {
 		const posts = await Post.find().sort({ date: -1 })
-		res.status(200).json(posts)
-	} catch (error) {
-		res.status(400).json({ message: `${error}`.red })
+		res.json(posts)
+	} catch (err) {
+		console.error(err.message.red.bold)
+		res.status(500).send('Server Error'.red.bold)
 	}
 })
 
-exports.getPostById = asyncHandler(async (req, res) => {
+// @route    GET api/posts/:id
+// @desc     Get post by ID
+// @access   Private
+
+exports.getPostById = asyncHandler(checkObjectId('id'), async (req, res) => {
 	try {
 		const post = await Post.findById(req.params.id)
 
 		if (!post) {
-			return res.status(404).json({ message: 'Post not found' })
+			return res.status(404).json({ msg: 'Post not found' })
 		}
 
-		res.status(200).json(post)
-	} catch (error) {
-		res.status(400).json({ message: `${error}` })
+		res.json(post)
+	} catch (err) {
+		console.error(err.message.red.bold)
+
+		res.status(500).send('Server Error'.red.bold)
 	}
 })
 
-exports.deletePost = asyncHandler(async (req, res) => {
+// @route    DELETE api/posts/:id
+// @desc     Delete a post
+// @access   Private
+
+exports.deletePost = asyncHandler([checkObjectId('id')], async (req, res) => {
 	try {
 		const post = await Post.findById(req.params.id)
 
 		if (!post) {
-			return res.status(404).json({ message: 'Post not found' })
+			return res.status(404).json({ msg: 'Post not found' })
 		}
 
+		// Check user
 		if (post.user.toString() !== req.user.id) {
-			return res.status(401).json({ message: 'User not authorized' })
+			return res.status(401).json({ msg: 'User not authorized' })
 		}
 
 		await post.remove()
 
-		res.status(200).json({ message: 'Post removed' })
-	} catch (error) {
-		res.status(400).json({ message: `${error}` })
+		res.json({ msg: 'Post removed' })
+	} catch (err) {
+		console.error(err.message.red.bold)
+
+		res.status(500).send('Server Error'.red.bold)
 	}
 })
 
-exports.likePost = asyncHandler(async (req, res) => {
+// @route    PUT api/posts/like/:id
+// @desc     Like a post
+// @access   Private
+
+exports.likePost = asyncHandler(checkObjectId('id'), async (req, res) => {
 	try {
 		const post = await Post.findById(req.params.id)
 
+		// Check if the post has already been liked
 		if (post.likes.some(like => like.user.toString() === req.user.id)) {
-			return res.status(400).json({ message: 'Post already liked' })
+			return res.status(400).json({ msg: 'Post already liked' })
 		}
 
 		post.likes.unshift({ user: req.user.id })
@@ -76,71 +115,101 @@ exports.likePost = asyncHandler(async (req, res) => {
 		await post.save()
 
 		return res.json(post.likes)
-	} catch (error) {
-		res.status(400).json({ message: `${error}` })
+	} catch (err) {
+		console.error(err.message.red.bold)
+		res.status(500).send('Server Error'.red.bold)
 	}
 })
 
-exports.unlikePost = asyncHandler(async (req, res) => {
+// @route    PUT api/posts/unlike/:id
+// @desc     Unlike a post
+// @access   Private
+
+exports.unlikePost = asyncHandler(checkObjectId('id'), async (req, res) => {
 	try {
 		const post = await Post.findById(req.params.id)
 
+		// Check if the post has not yet been liked
 		if (!post.likes.some(like => like.user.toString() === req.user.id)) {
-			return res.status(400).json({ message: 'Post has not yet been liked' })
+			return res.status(400).json({ msg: 'Post has not yet been liked' })
 		}
 
+		// remove the like
 		post.likes = post.likes.filter(({ user }) => user.toString() !== req.user.id)
 
 		await post.save()
 
 		return res.json(post.likes)
-	} catch (error) {
-		res.status(400).json({ message: `${error}` })
+	} catch (err) {
+		console.error(err.message.red.bold)
+		res.status(500).send('Server Error'.red.bold)
 	}
 })
 
-exports.commentPost = asyncHandler(async (req, res) => {
-	try {
-		const user = await User.findById(req.user.id)
-		const post = await Post.findById(req.params.id)
+// @route    POST api/posts/comment/:id
+// @desc     Comment on a post
+// @access   Private
 
-		const newComment = {
-			text: req.body.text,
-			name: user.name,
-			avatar: user.avatar,
-			user: req.user.id,
+exports.commentPost = asyncHandler(
+	checkObjectId('id'),
+	check('text', 'Text is required').notEmpty(),
+	async (req, res) => {
+		const errors = validationResult(req)
+		if (!errors.isEmpty()) {
+			return res.status(400).json({ errors: errors.array().red.bold })
 		}
 
-		post.comments.unshift(newComment)
+		try {
+			const user = await User.findById(req.user.id).select('-password')
+			const post = await Post.findById(req.params.id)
 
-		await post.save()
+			const newComment = {
+				text: req.body.text,
+				name: user.name,
+				avatar: user.avatar,
+				user: req.user.id,
+			}
 
-		res.status(200).json(post.comments)
-	} catch (error) {
-		res.status(400).json({ message: `${error}` })
+			post.comments.unshift(newComment)
+
+			await post.save()
+
+			res.json(post.comments)
+		} catch (err) {
+			console.error(err.message.red.bold)
+			res.status(500).send('Server Error'.red.bold)
+		}
 	}
-})
+)
+
+// @route    DELETE api/posts/comment/:id/:comment_id
+// @desc     Delete comment
+// @access   Private
 
 exports.deleteComment = asyncHandler(async (req, res) => {
 	try {
 		const post = await Post.findById(req.params.id)
 
-		const comment = post.comments.find(comment => comment.id === req.params.commentid)
-
+		// Pull out comment
+		const comment = post.comments.find(
+			comment => comment.id === req.params.comment_id
+		)
+		// Make sure comment exists
 		if (!comment) {
-			return res.status(404).json({ message: 'Comment does not exist' })
+			return res.status(404).json({ msg: 'Comment does not exist' })
 		}
-
+		// Check user
 		if (comment.user.toString() !== req.user.id) {
-			return res.status(401).json({ message: 'User not authorized' })
+			return res.status(401).json({ msg: 'User not authorized' })
 		}
 
-		post.comments = post.comments.filter(({ id }) => id !== req.params.commentsid)
+		post.comments = post.comments.filter(({ id }) => id !== req.params.comment_id)
 
 		await post.save()
 
-		return res.status(200).json(post.comments)
-	} catch (error) {
-		res.status(400).json({ message: `${error}` })
+		return res.json(post.comments)
+	} catch (err) {
+		console.error(err.message.red.bold)
+		return res.status(500).send('Server Error'.red.bold)
 	}
 })
